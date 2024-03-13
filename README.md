@@ -1,1 +1,1 @@
-# OpenAudioSwitcher
+Just for fun !
