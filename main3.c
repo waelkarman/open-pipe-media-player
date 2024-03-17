@@ -13,7 +13,6 @@ typedef struct _CustomData {
   GstElement *vsink;
 } CustomData;
 
-/* Handler for the pad-added signal */
 static void pad_added_handler (GstElement *src, GstPad *pad, CustomData *data);
 
 int main(int argc, char *argv[]) {
@@ -23,7 +22,6 @@ int main(int argc, char *argv[]) {
   GstStateChangeReturn ret;
   gboolean terminate = FALSE;
 
-  /* Initialize GStreamer */
   gst_init (&argc, &argv);
 
   /* Create the elements */
@@ -44,8 +42,6 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  /* Build the pipeline. Note that we are NOT linking the source at this
-   * point. We will do it later. */
   gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.vsink, NULL);
   
   if (!gst_element_link_many (data.audio_queue, data.aconvert, data.resample, data.asink, NULL)) {
@@ -53,16 +49,15 @@ int main(int argc, char *argv[]) {
     gst_object_unref (data.pipeline);
     return -1;
   }
+
   if (!gst_element_link_many (data.video_queue, data.vconvert, data.vsink, NULL)) {
     g_printerr ("Elements could not be linked2.\n");
     gst_object_unref (data.pipeline);
     return -1;
   }
 
-  /* Set the URI to play */
   g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
 
-  /* Connect to the pad-added signal */
   g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
 
   /* Start playing */
@@ -73,13 +68,11 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  /* Listen to the bus */
   bus = gst_element_get_bus (data.pipeline);
   do {
     msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
         GST_MESSAGE_STATE_CHANGED | GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 
-    /* Parse message */
     if (msg != NULL) {
       GError *err;
       gchar *debug_info;
@@ -107,7 +100,6 @@ int main(int argc, char *argv[]) {
           }
           break;
         default:
-          /* We should not reach here */
           g_printerr ("Unexpected message received.\n");
           break;
       }
@@ -131,7 +123,6 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
 
   g_print ("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
 
-  /* Check the new pad's type */
   new_pad_caps = gst_pad_get_current_caps (new_pad);
   new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
   new_pad_type = gst_structure_get_name (new_pad_struct);
@@ -157,7 +148,6 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
   }
 
 exit:
-  /* Unreference the new pad's caps, if we got them */
   if (new_pad_caps != NULL)
     gst_caps_unref (new_pad_caps);
 
