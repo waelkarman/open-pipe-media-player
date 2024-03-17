@@ -4,9 +4,13 @@
 typedef struct _CustomData {
   GstElement *pipeline;
   GstElement *source;
-  GstElement *convert;
+  GstElement *aconvert;
+  GstElement *vconvert;
   GstElement *resample;
-  GstElement *sink;
+  GstElement *audio_queue;
+  GstElement *video_queue;
+  GstElement *asink;
+  GstElement *vsink;
 } CustomData;
 
 /* Handler for the pad-added signal */
@@ -24,23 +28,33 @@ int main(int argc, char *argv[]) {
 
   /* Create the elements */
   data.source = gst_element_factory_make ("uridecodebin", "source");
-  data.convert = gst_element_factory_make ("audioconvert", "convert");
+  data.aconvert = gst_element_factory_make ("audioconvert", "audio-convert");
   data.resample = gst_element_factory_make ("audioresample", "resample");
-  data.sink = gst_element_factory_make ("autoaudiosink", "sink");
+  data.audio_queue = gst_element_factory_make("queue", "audio_queue");
+  data.video_queue = gst_element_factory_make("queue", "video_queue");
+  data.asink = gst_element_factory_make ("autoaudiosink", "audio-sink");
+  data.vconvert = gst_element_factory_make ("videoconvert", "vido-convert");
+  data.vsink = gst_element_factory_make ("autovideosink", "video-sink");
 
   /* Create the empty pipeline */
   data.pipeline = gst_pipeline_new ("test-pipeline");
 
-  if (!data.pipeline || !data.source || !data.convert || !data.resample || !data.sink) {
+  if (!data.pipeline || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.vsink){
     g_printerr ("Not all elements could be created.\n");
     return -1;
   }
 
   /* Build the pipeline. Note that we are NOT linking the source at this
    * point. We will do it later. */
-  gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.convert, data.resample, data.sink, NULL);
-  if (!gst_element_link_many (data.convert, data.resample, data.sink, NULL)) {
-    g_printerr ("Elements could not be linked.\n");
+  gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.vsink, NULL);
+  
+  if (!gst_element_link_many (data.audio_queue, data.aconvert, data.resample, data.asink, NULL)) {
+    g_printerr ("Elements could not be linked1.\n");
+    gst_object_unref (data.pipeline);
+    return -1;
+  }
+  if (!gst_element_link_many (data.video_queue, data.vconvert, data.vsink, NULL)) {
+    g_printerr ("Elements could not be linked2.\n");
     gst_object_unref (data.pipeline);
     return -1;
   }
@@ -49,7 +63,7 @@ int main(int argc, char *argv[]) {
   g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
 
   /* Connect to the pad-added signal */
-  g_signal_connect (data.source, "pad-added", G_CALLBACK (pad_added_handler), &data);
+  g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
 
   /* Start playing */
   ret = gst_element_set_state (data.pipeline, GST_STATE_PLAYING);
@@ -108,9 +122,8 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-/* This function will be called by the pad-added signal */
+
 static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *data) {
-  GstPad *sink_pad = gst_element_get_static_pad (data->convert, "sink");
   GstPadLinkReturn ret;
   GstCaps *new_pad_caps = NULL;
   GstStructure *new_pad_struct = NULL;
@@ -118,27 +131,29 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
 
   g_print ("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
 
-  /* If our converter is already linked, we have nothing to do here */
-  if (gst_pad_is_linked (sink_pad)) {
-    g_print ("We are already linked. Ignoring.\n");
-    goto exit;
-  }
-
   /* Check the new pad's type */
   new_pad_caps = gst_pad_get_current_caps (new_pad);
   new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
   new_pad_type = gst_structure_get_name (new_pad_struct);
-  if (!g_str_has_prefix (new_pad_type, "audio/x-raw")) {
-    g_print ("It has type '%s' which is not raw audio. Ignoring.\n", new_pad_type);
-    goto exit;
+
+  GstPad *vsink_pad = gst_element_get_static_pad (data->video_queue, "sink");
+  if(g_str_has_prefix (new_pad_type, "video/x-raw")){
+    ret = gst_pad_link (new_pad, vsink_pad);
+    if (GST_PAD_LINK_FAILED (ret)) {
+      g_print ("Type is '%s' but link failed.\n", new_pad_type);
+    } else {
+      g_print ("Link succeeded (type '%s').\n", new_pad_type);
+    }
   }
 
-  /* Attempt the link */
-  ret = gst_pad_link (new_pad, sink_pad);
-  if (GST_PAD_LINK_FAILED (ret)) {
-    g_print ("Type is '%s' but link failed.\n", new_pad_type);
-  } else {
-    g_print ("Link succeeded (type '%s').\n", new_pad_type);
+  GstPad *asink_pad = gst_element_get_static_pad (data->audio_queue, "sink");
+  if(g_str_has_prefix (new_pad_type, "audio/x-raw")){
+    ret = gst_pad_link (new_pad, asink_pad);
+    if (GST_PAD_LINK_FAILED (ret)) {
+      g_print ("Type is '%s' but link failed.\n", new_pad_type);
+    } else {
+      g_print ("Link succeeded (type '%s').\n", new_pad_type);
+    }
   }
 
 exit:
@@ -147,5 +162,21 @@ exit:
     gst_caps_unref (new_pad_caps);
 
   /* Unreference the sink pad */
-  gst_object_unref (sink_pad);
+  gst_object_unref (asink_pad);
+  gst_object_unref (vsink_pad);
 }
+
+
+
+
+/*
+Split audio and video reading a media file
+
+gst-launch-1.0 uridecodebin uri=https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm name=dec  dec. ! queue ! videoconvert ! autovideosink  dec. ! queue ! audioconvert ! autoaudiosink
+
+Simple UdP stream & receive
+gst-launch-1.0 uridecodebin uri=file:///home/bhbn/Videos/chopin.mp4 ! queue ! videoconvert ! jpegenc ! rtpjpegpay ! udpsink port=5000 host=127.0.0.1
+gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
+Combined 
+gst-launch-1.0 uridecodebin uri=file:///home/bhbn/Videos/chopin.mp4 name=dec  dec. ! queue ! videoconvert ! jpegenc ! rtpjpegpay ! udpsink port=5000 host=127.0.0.1  dec. ! queue ! audioconvert ! autoaudiosink
+*/
