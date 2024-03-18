@@ -51,13 +51,13 @@ int main(int argc, char *argv[]) {
   gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.vsink, NULL);
   
   if (!gst_element_link_many (data.audio_queue, data.aconvert, data.resample, data.asink, NULL)) {
-    g_printerr ("Elements could not be linked1.\n");
+    g_printerr ("Elements could not be linked on audio brach.\n");
     gst_object_unref (data.pipeline);
     return -1;
   }
 
   if (!gst_element_link_many (data.video_queue, data.vconvert, data.vsink, NULL)) {
-    g_printerr ("Elements could not be linked2.\n");
+    g_printerr ("Elements could not be linked on video brach.\n");
     gst_object_unref (data.pipeline);
     return -1;
   }
