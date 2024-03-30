@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
   gst_init (&argc, &argv);
 
-  
+  data.seek_done = FALSE;
   data.source = gst_element_factory_make ("uridecodebin", "source");
   data.aconvert = gst_element_factory_make ("audioconvert", "audio-convert");
   data.resample = gst_element_factory_make ("audioresample", "resample");
@@ -40,8 +40,7 @@ int main(int argc, char *argv[]) {
   data.vconvert = gst_element_factory_make ("videoconvert", "vido-convert");
   data.vsink = gst_element_factory_make ("autovideosink", "video-sink");
 
-  
-  data.pipeline = gst_pipeline_new ("test-pipeline");
+  data.pipeline = gst_pipeline_new ("split-pipeline");
 
   if (!data.pipeline || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.vsink){
     g_printerr ("Not all elements could be created.\n");
@@ -65,7 +64,6 @@ int main(int argc, char *argv[]) {
   g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
 
   g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
-
   
   ret = gst_element_set_state (data.pipeline, GST_STATE_PLAYING);
   if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -75,6 +73,7 @@ int main(int argc, char *argv[]) {
   }
 
   bus = gst_element_get_bus (data.pipeline);
+
   do {
     msg = gst_bus_timed_pop_filtered (bus, 100*GST_MSECOND,
         GST_MESSAGE_STATE_CHANGED | GST_MESSAGE_ERROR | GST_MESSAGE_EOS | GST_MESSAGE_DURATION);
@@ -83,39 +82,33 @@ int main(int argc, char *argv[]) {
       handle_message (&data, msg);
     }
     else
-    {
-      
+    { 
       if (data.playing) {
         gint64 current = -1;
 
-        
         if (!gst_element_query_position (data.pipeline, GST_FORMAT_TIME, &current)) {
           g_printerr ("Could not query current position.\n");
         }
 
-        
         if (!GST_CLOCK_TIME_IS_VALID (data.duration)) {
           if (!gst_element_query_duration (data.pipeline, GST_FORMAT_TIME, &data.duration)) {
             g_printerr ("Could not query current duration.\n");
           }
         }
 
+        g_print ("Position %" GST_TIME_FORMAT " / %" GST_TIME_FORMAT "\r", GST_TIME_ARGS (current), GST_TIME_ARGS (data.duration));
         
-        g_print ("Position %" GST_TIME_FORMAT " / %" GST_TIME_FORMAT "\r",
-            GST_TIME_ARGS (current), GST_TIME_ARGS (data.duration));
-
         
-        if (data.seek_enabled && !data.seek_done && current > 10 * GST_SECOND) {
+        if (data.seek_enabled && !data.seek_done && current > 5 * GST_SECOND) {
           g_print ("\nReached 10s, performing seek...\n");
-          gst_element_seek_simple (data.pipeline, GST_FORMAT_TIME,
-              GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 30 * GST_SECOND);
+          gst_element_seek_simple (data.pipeline, GST_FORMAT_TIME,GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 45 * GST_SECOND);
           data.seek_done = TRUE;
         }
+
       }
     }
   } while (!terminate);
 
-  
   gst_object_unref (bus);
   gst_element_set_state (data.pipeline, GST_STATE_NULL);
   gst_object_unref (data.pipeline);
@@ -159,7 +152,6 @@ exit:
   if (new_pad_caps != NULL)
     gst_caps_unref (new_pad_caps);
 
-  
   gst_object_unref (asink_pad);
   gst_object_unref (vsink_pad);
 }
@@ -183,7 +175,6 @@ static void handle_message (CustomData *data, GstMessage *msg) {
       data->terminate = TRUE;
       break;
     case GST_MESSAGE_DURATION:
-      
       data->duration = GST_CLOCK_TIME_NONE;
       break;
     case GST_MESSAGE_STATE_CHANGED: {
