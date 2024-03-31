@@ -1,4 +1,5 @@
 #include <gst/gst.h>
+#include <gtk/gtk.h>
 
 
 typedef struct _CustomData {
@@ -21,6 +22,35 @@ typedef struct _CustomData {
 static void handle_message (CustomData *data, GstMessage *msg);
 static void pad_added_handler (GstElement *src, GstPad *pad, CustomData *data);
 
+void create_ui(){
+    GtkWidget *window;
+    GtkWidget *box;
+    GtkWidget *play_button, *pause_button, *stop_button;
+
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "Control Box");
+    gtk_window_set_default_size(GTK_WINDOW(window), 200, 100);
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(window), box);
+
+    play_button = gtk_button_new_with_label("Play");
+    pause_button = gtk_button_new_with_label("Pause");
+    stop_button = gtk_button_new_with_label("Stop");
+
+    gtk_box_pack_start(GTK_BOX(box), play_button, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(box), pause_button, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(box), stop_button, TRUE, TRUE, 0);
+
+    gtk_widget_show_all(window);
+
+    gtk_main();
+};
+
+
+
+
 int main(int argc, char *argv[]) {
   CustomData data;
   GstBus *bus;
@@ -28,7 +58,11 @@ int main(int argc, char *argv[]) {
   GstStateChangeReturn ret;
   gboolean terminate = FALSE;
 
+  // Inizializza GTK+
+  gtk_init(&argc, &argv);
   gst_init (&argc, &argv);
+
+  create_ui();
 
   data.seek_done = FALSE;
   data.source = gst_element_factory_make ("uridecodebin", "source");
