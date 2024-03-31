@@ -1,6 +1,8 @@
-#include <gst/gst.h>
-#include <gtk/gtk.h>
+#include <string.h>
 
+#include <gtk/gtk.h>
+#include <gst/gst.h>
+#include <gdk/gdk.h>
 
 typedef struct _CustomData {
   GstElement *pipeline;
@@ -12,40 +14,54 @@ typedef struct _CustomData {
   GstElement *video_queue;
   GstElement *asink;
   GstElement *vsink;
+  GstElement *videosink;
+  GstElement *gtkglsink;
+  GstElement *playbin;
   gboolean playing;      
   gboolean terminate;    
   gboolean seek_enabled; 
   gboolean seek_done;    
-  gint64 duration;       
+  gint64 duration;
+  GtkWidget *sink_widget;       
 } CustomData;
 
 static void handle_message (CustomData *data, GstMessage *msg);
 static void pad_added_handler (GstElement *src, GstPad *pad, CustomData *data);
 
-void create_ui(){
+void create_ui(CustomData *data){
     GtkWidget *window;
-    GtkWidget *box;
+    GtkWidget *main_view;
+    GtkWidget *buttons;
     GtkWidget *play_button, *pause_button, *stop_button;
 
-    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "Control Box");
-    gtk_window_set_default_size(GTK_WINDOW(window), 200, 100);
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
-    box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_container_add(GTK_CONTAINER(window), box);
 
+    buttons = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     play_button = gtk_button_new_with_label("Play");
     pause_button = gtk_button_new_with_label("Pause");
     stop_button = gtk_button_new_with_label("Stop");
+    gtk_box_pack_start(GTK_BOX(buttons), play_button, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(buttons), pause_button, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(buttons), stop_button, TRUE, TRUE, 0);
 
-    gtk_box_pack_start(GTK_BOX(box), play_button, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(box), pause_button, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(box), stop_button, TRUE, TRUE, 0);
+    main_view = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX (main_view), data->sink_widget, TRUE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (main_view), buttons, TRUE, TRUE, 0);
 
+
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "Player Name");
+    
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    
+
+  
+    gtk_container_add(GTK_CONTAINER(window), main_view);
+    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
     gtk_widget_show_all(window);
 
-    gtk_main();
+    
 };
 
 
@@ -58,29 +74,47 @@ int main(int argc, char *argv[]) {
   GstStateChangeReturn ret;
   gboolean terminate = FALSE;
 
-  // Inizializza GTK+
   gtk_init(&argc, &argv);
+  
   gst_init (&argc, &argv);
 
-  create_ui();
+ 
 
-  data.seek_done = FALSE;
+  data.seek_done = TRUE;
   data.source = gst_element_factory_make ("uridecodebin", "source");
   data.aconvert = gst_element_factory_make ("audioconvert", "audio-convert");
   data.resample = gst_element_factory_make ("audioresample", "resample");
   data.audio_queue = gst_element_factory_make("queue", "audio_queue");
   data.video_queue = gst_element_factory_make("queue", "video_queue");
   data.asink = gst_element_factory_make ("autoaudiosink", "audio-sink");
-  data.vconvert = gst_element_factory_make ("videoconvert", "vido-convert");
+  data.vconvert = gst_element_factory_make ("videoconvert", "video-convert");
   data.vsink = gst_element_factory_make ("autovideosink", "video-sink");
+
+  data.playbin = gst_element_factory_make ("playbin", "playbin");
+  data.videosink = gst_element_factory_make ("glsinkbin", "glsinkbin");
+  data.gtkglsink = gst_element_factory_make ("gtkglsink", "gtkglsink");
 
   data.pipeline = gst_pipeline_new ("split-pipeline");
 
-  if (!data.pipeline || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.vsink){
+  if (data.gtkglsink != NULL && data.videosink != NULL) {
+    g_printerr ("Successfully created GTK GL Sink");
+    g_object_set (data.videosink, "sink", data.gtkglsink, NULL);
+    g_object_get (data.gtkglsink, "widget", &data.sink_widget, NULL);
+  }else {
+    g_printerr ("Could not create gtkglsink, falling back to gtksink.\n");
+    data.videosink = gst_element_factory_make ("gtksink", "gtksink");
+    g_object_get (data.videosink, "widget", &data.sink_widget, NULL);
+  }
+
+  
+
+  if (!data.pipeline || !data.videosink || !data.gtkglsink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.vsink){
     g_printerr ("Not all elements could be created.\n");
     return -1;
   }
 
+
+//data.videosink, data.gtkglsink,
   gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.vsink, NULL);
   
   if (!gst_element_link_many (data.audio_queue, data.aconvert, data.resample, data.asink, NULL)) {
@@ -96,6 +130,15 @@ int main(int argc, char *argv[]) {
   }
 
   g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
+
+  g_object_set (data.playbin, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
+  g_object_set (data.playbin, "video-sink", data.videosink, NULL);
+  
+
+
+  create_ui (&data);
+  gst_element_set_state (data.playbin, GST_STATE_PLAYING);
+  gtk_main();
 
   g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
   
