@@ -7,7 +7,7 @@ The main goal is to master media pipelines. Stay Tuned ! <br><br>
 <img src="doc/screen.gif">
 
 - gstreamer
-- C++/17
+- C
 - gtk3
 - Cmake
 
