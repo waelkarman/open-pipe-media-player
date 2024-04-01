@@ -2,7 +2,7 @@
 
 Just for fun !
 
-The main goal is to master media pipelines. Stay Tuned ! <br><br>
+The main goal is to master media pipelines. <br><br>
 
 <img src="doc/screen.gif">
 
