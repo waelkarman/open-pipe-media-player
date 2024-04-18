@@ -34,3 +34,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${GLIB_LIBRARIES}
     ${GTK3_LIBRARIES}
 )
+
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
