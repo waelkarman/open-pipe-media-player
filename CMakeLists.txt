@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O2")
+
 project(open-pipe-media-player LANGUAGES C)
 
 find_package(PkgConfig REQUIRED)
@@ -30,6 +32,7 @@ target_link_libraries(${PROJECT_NAME}-3 PRIVATE
 include_directories(${GTK3_INCLUDE_DIRS})
 link_directories(${GTK3_LIBRARY_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE 
+    pthread
     ${GST_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${GTK3_LIBRARIES}

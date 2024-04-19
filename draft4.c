@@ -1,4 +1,6 @@
 #include <string.h>
+#include <pthread.h>
+#include <stdio.h>
 
 #include <gtk/gtk.h>
 #include <gst/gst.h>
@@ -74,6 +76,10 @@ void create_ui(CustomData *data){
     gtk_widget_show_all(window);
 };
 
+void* gtk_main_loop(void* arg) {
+  gtk_main();
+}
+
 
 int main(int argc, char *argv[]) {
   CustomData data;
@@ -137,8 +143,13 @@ int main(int argc, char *argv[]) {
   /* Connect source pads to pipeline on the fly depending on the content of the source */
   g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
 
+  
+
+  
+  
   /* Create GUI */
   create_ui (&data);
+
 
   ret = gst_element_set_state (data.pipeline, GST_STATE_PLAYING);
   if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -146,11 +157,10 @@ int main(int argc, char *argv[]) {
     gst_object_unref (data.pipeline);
     return -1;
   }
-
-  g_printerr ("Run GTK main loop.\n");
-  gtk_main();
-
-
+  
+  /* Run gtk main loop in a separate thread */
+  pthread_t ui_loop_thread;
+  pthread_create(&ui_loop_thread, NULL, &gtk_main_loop, NULL);
 
 
   /* BUS message management */
@@ -191,11 +201,60 @@ int main(int argc, char *argv[]) {
     }
   } while (!terminate);
 
+  pthread_join(ui_loop_thread, NULL);
+
   gst_object_unref (bus);
   gst_element_set_state (data.pipeline, GST_STATE_NULL);
   gst_object_unref (data.pipeline);
   return 0;
 }
+
+
+
+// void gtk_main_loop() {
+
+// }
+
+// void threadlauncher(int cpunum){
+//     pthread_t thread;
+//     cpu_set_t cpuset;
+//     printf("Set CPU %d\n",cpunum);
+
+//     pthread_create(&thread, NULL, &threadFunction, NULL);
+
+//     CPU_ZERO(&cpuset);
+//     CPU_SET(cpunum, &cpuset);
+
+//     int result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+//     if (result != 0) {
+//         perror("Error");
+//     }
+
+//     pthread_join(thread, NULL);
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *data) {
