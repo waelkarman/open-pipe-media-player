@@ -8,6 +8,7 @@ The main goal is to master media pipelines and create a media player for [bunch-
 - gtk+3
 - gstreamer
 - Cmake
+- POSIX thread
 
 # Build and run
 please run: 
