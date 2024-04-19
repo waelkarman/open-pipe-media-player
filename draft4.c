@@ -95,15 +95,18 @@ int main(int argc, char *argv[]) {
   data.vconvert = gst_element_factory_make ("videoconvert", "video-convert");
   data.videosink = gst_element_factory_make ("glsinkbin", "glsinkbin");
   data.gtkglsink = gst_element_factory_make ("gtkglsink", "gtkglsink");
-  data.pipeline = gst_pipeline_new ("split-pipeline");
   
-  if (!data.pipeline || !data.videosink || !data.gtkglsink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.gtkglsink){ // || !data.vsink){
+  data.pipeline = gst_pipeline_new ("open-audio-video-pipeline");
+  
+  if (!data.pipeline || !data.videosink || !data.gtkglsink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.gtkglsink){
     g_printerr ("Not all elements could be created.\n");
     return -1;
   }
   
+  /* Select the source */
   g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
 
+  /* Set gtk widget as sink video */
  if (data.gtkglsink != NULL && data.videosink != NULL) {
     g_printerr ("Successfully created GTK GL Sink \n");
     g_object_set (data.videosink, "sink", data.gtkglsink, NULL);
@@ -114,33 +117,27 @@ int main(int argc, char *argv[]) {
     g_object_get (data.videosink, "widget", &data.sink_widget, NULL);
   }
 
-
-  /* Add gst-elements to bin */
+  /* Add gst-elements to BIN */
   gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.videosink, NULL);
   
-  g_printerr ("Added to BIN.\n");
-  /* Link audio elements */
+  /* Link separate audio pipeline branch */
   if (!gst_element_link_many (data.audio_queue, data.aconvert, data.resample, data.asink, NULL)) {
     g_printerr ("Elements could not be linked on audio brach.\n");
     gst_object_unref (data.pipeline);
     return -1;
   }
 
-  /* Link video elements */
-  if (!gst_element_link_many (data.video_queue, data.vconvert, data.videosink, NULL)) {//data.vsink
+  /* Link separate video pipeline branch */
+  if (!gst_element_link_many (data.video_queue, data.vconvert, data.videosink, NULL)) {
     g_printerr ("Elements could not be linked on video brach.\n");
     gst_object_unref (data.pipeline);
     return -1;
   }
 
-  g_printerr ("Pipeline Linked.\n");
-  /* Set media source */
-
+  /* Connect source pads to pipeline on the fly depending on the content of the source */
   g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
 
-  g_printerr ("PADS connected.\n");
-  
-  /* Run GUI */
+  /* Create GUI */
   create_ui (&data);
 
   ret = gst_element_set_state (data.pipeline, GST_STATE_PLAYING);
@@ -150,9 +147,14 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  bus = gst_element_get_bus (data.pipeline);
-  g_printerr ("UI created and bus connected.\n");
+  g_printerr ("Run GTK main loop.\n");
   gtk_main();
+
+
+
+
+  /* BUS message management */
+  bus = gst_element_get_bus (data.pipeline);
 
   do {
     msg = gst_bus_timed_pop_filtered (bus, 100*GST_MSECOND,
