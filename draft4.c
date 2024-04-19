@@ -76,17 +76,18 @@ void create_ui(CustomData *data){
     gtk_widget_show_all(window);
 };
 
-void* gtk_main_loop(void* arg) {
+void* gtk_main_loop(void* data) {
+  CustomData* cstd = (CustomData*)data;
   gtk_main();
+  cstd->terminate = TRUE;
 }
-
 
 int main(int argc, char *argv[]) {
   CustomData data;
   GstBus *bus;
   GstMessage *msg;
   GstStateChangeReturn ret;
-  gboolean terminate = FALSE;
+  data.terminate = FALSE;
 
   gtk_init(&argc, &argv);
   gst_init (&argc, &argv);
@@ -143,13 +144,8 @@ int main(int argc, char *argv[]) {
   /* Connect source pads to pipeline on the fly depending on the content of the source */
   g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
 
-  
-
-  
-  
   /* Create GUI */
   create_ui (&data);
-
 
   ret = gst_element_set_state (data.pipeline, GST_STATE_PLAYING);
   if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -160,10 +156,10 @@ int main(int argc, char *argv[]) {
   
   /* Run gtk main loop in a separate thread */
   pthread_t ui_loop_thread;
-  pthread_create(&ui_loop_thread, NULL, &gtk_main_loop, NULL);
+  pthread_create(&ui_loop_thread, NULL, &gtk_main_loop, (void*)&data);
 
 
-  /* BUS message management */
+  /* Pipeline query handler */
   bus = gst_element_get_bus (data.pipeline);
 
   do {
@@ -191,15 +187,15 @@ int main(int argc, char *argv[]) {
         g_print ("Position %" GST_TIME_FORMAT " / %" GST_TIME_FORMAT "\r", GST_TIME_ARGS (current), GST_TIME_ARGS (data.duration));
         
         
-        if (data.seek_enabled && !data.seek_done && current > 5 * GST_SECOND) {
-          g_print ("\nReached 10s, performing seek...\n");
-          gst_element_seek_simple (data.pipeline, GST_FORMAT_TIME,GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 45 * GST_SECOND);
-          data.seek_done = TRUE;
-        }
+        // if (data.seek_enabled && !data.seek_done && current > 5 * GST_SECOND) {
+        //   g_print ("\nReached 10s, performing seek...\n");
+        //   gst_element_seek_simple (data.pipeline, GST_FORMAT_TIME,GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 45 * GST_SECOND);
+        //   data.seek_done = TRUE;
+        // }
 
-      }
+      }     
     }
-  } while (!terminate);
+  } while (!data.terminate);
 
   pthread_join(ui_loop_thread, NULL);
 
@@ -208,53 +204,6 @@ int main(int argc, char *argv[]) {
   gst_object_unref (data.pipeline);
   return 0;
 }
-
-
-
-// void gtk_main_loop() {
-
-// }
-
-// void threadlauncher(int cpunum){
-//     pthread_t thread;
-//     cpu_set_t cpuset;
-//     printf("Set CPU %d\n",cpunum);
-
-//     pthread_create(&thread, NULL, &threadFunction, NULL);
-
-//     CPU_ZERO(&cpuset);
-//     CPU_SET(cpunum, &cpuset);
-
-//     int result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-//     if (result != 0) {
-//         perror("Error");
-//     }
-
-//     pthread_join(thread, NULL);
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *data) {
@@ -274,6 +223,7 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
     ret = gst_pad_link (new_pad, vsink_pad);
     if (GST_PAD_LINK_FAILED (ret)) {
       g_print ("Type is '%s' but link failed.\n", new_pad_type);
+      goto exit;
     } else {
       g_print ("Link succeeded (type '%s').\n", new_pad_type);
     }
@@ -284,6 +234,7 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
     ret = gst_pad_link (new_pad, asink_pad);
     if (GST_PAD_LINK_FAILED (ret)) {
       g_print ("Type is '%s' but link failed.\n", new_pad_type);
+      goto exit;
     } else {
       g_print ("Link succeeded (type '%s').\n", new_pad_type);
     }
