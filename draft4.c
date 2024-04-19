@@ -16,7 +16,6 @@ typedef struct _CustomData {
   GstElement *vsink;
   GstElement *videosink;
   GstElement *gtkglsink;
-  GstElement *playbin;
   gboolean playing;      
   gboolean terminate;    
   gboolean seek_enabled; 
@@ -29,15 +28,15 @@ static void handle_message (CustomData *data, GstMessage *msg);
 static void pad_added_handler (GstElement *src, GstPad *pad, CustomData *data);
 
 static void play_cb (GtkButton *button, CustomData *data) {
-  gst_element_set_state (data->playbin, GST_STATE_PLAYING);
+  gst_element_set_state (data->pipeline, GST_STATE_PLAYING);
 }
 
 static void pause_cb (GtkButton *button, CustomData *data) {
-  gst_element_set_state (data->playbin, GST_STATE_PAUSED);
+  gst_element_set_state (data->pipeline, GST_STATE_PAUSED);
 }
 
 static void stop_cb (GtkButton *button, CustomData *data) {
-  gst_element_set_state (data->playbin, GST_STATE_READY);
+  gst_element_set_state (data->pipeline, GST_STATE_READY);
 }
 
 void create_ui(CustomData *data){
@@ -45,8 +44,6 @@ void create_ui(CustomData *data){
     GtkWidget *main_view;
     GtkWidget *buttons;
     GtkWidget *play_button, *pause_button, *stop_button;
-
-
 
     buttons = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     play_button = gtk_button_new_with_label("Play");
@@ -78,8 +75,6 @@ void create_ui(CustomData *data){
 };
 
 
-
-
 int main(int argc, char *argv[]) {
   CustomData data;
   GstBus *bus;
@@ -88,10 +83,7 @@ int main(int argc, char *argv[]) {
   gboolean terminate = FALSE;
 
   gtk_init(&argc, &argv);
-  
   gst_init (&argc, &argv);
-
- 
 
   data.seek_done = TRUE;
   data.source = gst_element_factory_make ("uridecodebin", "source");
@@ -101,13 +93,10 @@ int main(int argc, char *argv[]) {
   data.video_queue = gst_element_factory_make("queue", "video_queue");
   data.asink = gst_element_factory_make ("autoaudiosink", "audio-sink");
   data.vconvert = gst_element_factory_make ("videoconvert", "video-convert");
-  //data.vsink = gst_element_factory_make ("autovideosink", "video-sink");
-
   data.videosink = gst_element_factory_make ("glsinkbin", "glsinkbin");
   data.gtkglsink = gst_element_factory_make ("gtkglsink", "gtkglsink");
   data.pipeline = gst_pipeline_new ("split-pipeline");
   
-  /* Validate gst-elements */
   if (!data.pipeline || !data.videosink || !data.gtkglsink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.gtkglsink){ // || !data.vsink){
     g_printerr ("Not all elements could be created.\n");
     return -1;
@@ -243,7 +232,7 @@ exit:
   if (new_pad_caps != NULL)
     gst_caps_unref (new_pad_caps);
 
-  //gst_object_unref (asink_pad);
+  gst_object_unref (asink_pad);
   gst_object_unref (vsink_pad);
 }
 
