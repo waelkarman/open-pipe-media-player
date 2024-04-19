@@ -7,7 +7,7 @@ The main goal is to master media pipelines and create a media player for [bunch-
 <img src="doc/screen.gif">
 
 - C
-- gtk3
+- gtk+3
 - gstreamer
 - Cmake
 
