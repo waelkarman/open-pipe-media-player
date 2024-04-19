@@ -101,16 +101,22 @@ int main(int argc, char *argv[]) {
   data.video_queue = gst_element_factory_make("queue", "video_queue");
   data.asink = gst_element_factory_make ("autoaudiosink", "audio-sink");
   data.vconvert = gst_element_factory_make ("videoconvert", "video-convert");
-  data.vsink = gst_element_factory_make ("autovideosink", "video-sink");
+  //data.vsink = gst_element_factory_make ("autovideosink", "video-sink");
 
-  data.playbin = gst_element_factory_make ("playbin", "playbin");
   data.videosink = gst_element_factory_make ("glsinkbin", "glsinkbin");
   data.gtkglsink = gst_element_factory_make ("gtkglsink", "gtkglsink");
-
   data.pipeline = gst_pipeline_new ("split-pipeline");
+  
+  /* Validate gst-elements */
+  if (!data.pipeline || !data.videosink || !data.gtkglsink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.gtkglsink){ // || !data.vsink){
+    g_printerr ("Not all elements could be created.\n");
+    return -1;
+  }
+  
+  g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
 
-  if (data.gtkglsink != NULL && data.videosink != NULL) {
-    g_printerr ("Successfully created GTK GL Sink");
+ if (data.gtkglsink != NULL && data.videosink != NULL) {
+    g_printerr ("Successfully created GTK GL Sink \n");
     g_object_set (data.videosink, "sink", data.gtkglsink, NULL);
     g_object_get (data.gtkglsink, "widget", &data.sink_widget, NULL);
   }else {
@@ -119,16 +125,11 @@ int main(int argc, char *argv[]) {
     g_object_get (data.videosink, "widget", &data.sink_widget, NULL);
   }
 
-  
-  /* Validate gst-elements */
-  if (!data.pipeline || !data.videosink || !data.gtkglsink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.vsink){
-    g_printerr ("Not all elements could be created.\n");
-    return -1;
-  }
 
   /* Add gst-elements to bin */
-  gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.vsink, NULL);
+  gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.videosink, NULL);
   
+  g_printerr ("Added to BIN.\n");
   /* Link audio elements */
   if (!gst_element_link_many (data.audio_queue, data.aconvert, data.resample, data.asink, NULL)) {
     g_printerr ("Elements could not be linked on audio brach.\n");
@@ -137,31 +138,22 @@ int main(int argc, char *argv[]) {
   }
 
   /* Link video elements */
-  if (!gst_element_link_many (data.video_queue, data.vconvert, data.vsink, NULL)) {
+  if (!gst_element_link_many (data.video_queue, data.vconvert, data.videosink, NULL)) {//data.vsink
     g_printerr ("Elements could not be linked on video brach.\n");
     gst_object_unref (data.pipeline);
     return -1;
   }
 
+  g_printerr ("Pipeline Linked.\n");
   /* Set media source */
-  g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
-
-
-
-  g_object_set (data.playbin, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
-  g_object_set (data.playbin, "video-sink", data.videosink, NULL);
-  
-
-  /* Run GUI */
-  create_ui (&data);
-  gst_element_set_state (data.playbin, GST_STATE_PLAYING);
-  gtk_main();
-
-
-
 
   g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler), &data);
+
+  g_printerr ("PADS connected.\n");
   
+  /* Run GUI */
+  create_ui (&data);
+
   ret = gst_element_set_state (data.pipeline, GST_STATE_PLAYING);
   if (ret == GST_STATE_CHANGE_FAILURE) {
     g_printerr ("Unable to set the pipeline to the playing state.\n");
@@ -170,6 +162,8 @@ int main(int argc, char *argv[]) {
   }
 
   bus = gst_element_get_bus (data.pipeline);
+  g_printerr ("UI created and bus connected.\n");
+  gtk_main();
 
   do {
     msg = gst_bus_timed_pop_filtered (bus, 100*GST_MSECOND,
@@ -249,7 +243,7 @@ exit:
   if (new_pad_caps != NULL)
     gst_caps_unref (new_pad_caps);
 
-  gst_object_unref (asink_pad);
+  //gst_object_unref (asink_pad);
   gst_object_unref (vsink_pad);
 }
 
