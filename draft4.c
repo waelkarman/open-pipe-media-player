@@ -111,7 +111,15 @@ int main(int argc, char *argv[]) {
   }
   
   /* Select the source */
-  g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
+  if(argc > 1){
+    size_t length = strlen(argv[1]);
+    char *copy = malloc(7+length + 1);
+    strcpy(copy, "file://");
+    strcat(copy, argv[1]);
+    g_object_set (data.source, "uri", copy, NULL);
+  }else{
+    g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
+  }
 
   /* Set gtk widget as sink video */
  if (data.gtkglsink != NULL && data.videosink != NULL) {
