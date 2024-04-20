@@ -11,6 +11,9 @@ The idea is to separate the audio from the video stream and introduce recording 
 - Cmake
 - POSIX thread
 
+To be able to reproduce most of the audio/video format on debian based distros please install:
+> sudo apt-get install gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
+
 # Build and run
 please run: 
 > cmake . ; make; ./open-pipe-media-player
