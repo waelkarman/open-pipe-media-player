@@ -16,4 +16,4 @@ To be able to reproduce most of the audio/video format on debian based distros p
 
 # Build and run
 please run: 
-> cmake . ; make; ./open-pipe-media-player
+> cmake . ; make; ./open-pipe-media-player \</path/to/video\>
