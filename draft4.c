@@ -231,7 +231,9 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
     ret = gst_pad_link (new_pad, vsink_pad);
     if (GST_PAD_LINK_FAILED (ret)) {
       g_print ("Type is '%s' but link failed.\n", new_pad_type);
-      goto exit;
+        if (new_pad_caps != NULL)
+          gst_caps_unref (new_pad_caps);
+        gst_object_unref (vsink_pad);
     } else {
       g_print ("Link succeeded (type '%s').\n", new_pad_type);
     }
@@ -242,18 +244,14 @@ static void pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *dat
     ret = gst_pad_link (new_pad, asink_pad);
     if (GST_PAD_LINK_FAILED (ret)) {
       g_print ("Type is '%s' but link failed.\n", new_pad_type);
-      goto exit;
+      if (new_pad_caps != NULL)
+        gst_caps_unref (new_pad_caps);
+      gst_object_unref (asink_pad);
     } else {
       g_print ("Link succeeded (type '%s').\n", new_pad_type);
     }
   }
-
-exit:
-  if (new_pad_caps != NULL)
-    gst_caps_unref (new_pad_caps);
-
-  gst_object_unref (asink_pad);
-  gst_object_unref (vsink_pad);
+  
 }
 
 
