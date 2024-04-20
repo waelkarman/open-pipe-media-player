@@ -1,6 +1,7 @@
 ## Open pipe media player [in development]
 
-The main goal is to master media pipelines and create a media player for [bunch-linux](https://waelkarman.github.io/bunch-linux-manifests/). <br><br>
+A media player built for [bunch-linux](https://waelkarman.github.io/bunch-linux-manifests/). <br><br>
+The idea is to separate the audio from the video stream and introduce recording and stream forwarding features.
 
 <img src="doc/screen.gif">
 
