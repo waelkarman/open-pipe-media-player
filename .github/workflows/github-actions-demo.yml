@@ -12,5 +12,7 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
+      - name: Install required packages
+        run: sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - name: build 
         run: cmake .; make
