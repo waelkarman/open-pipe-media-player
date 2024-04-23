@@ -42,4 +42,3 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./open-pipe-media-player
           asset_name: open-pipe-media-player
-          asset_content_type: application
