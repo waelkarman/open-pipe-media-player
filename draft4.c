@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
   
   data.pipeline = gst_pipeline_new ("open-audio-video-pipeline");
   
-  if (!data.pipeline || !data.videosink || !data.gtkglsink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.gtkglsink){
+  if (!data.pipeline || !data.videosink || !data.source || !data.aconvert || !data.audio_queue || !data.video_queue || !data.vconvert || !data.resample || !data.asink || !data.gtkglsink){
     g_printerr ("Not all elements could be created.\n");
     return -1;
   }
