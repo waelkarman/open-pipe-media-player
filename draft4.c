@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     strcat(copy, argv[1]);
     g_object_set (data.source, "uri", copy, NULL);
   }else{
-    g_object_set (data.source, "uri", "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm", NULL);
+    g_object_set (data.source, "uri", "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", NULL);
   }
 
   /* Set gtk widget as sink video */
