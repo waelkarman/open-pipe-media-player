@@ -121,16 +121,22 @@ int main(int argc, char *argv[]) {
     g_object_set (data.source, "uri", "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", NULL);
   }
 
+
   /* Set gtk widget as sink video */
- if (data.gtkglsink != NULL && data.videosink != NULL) {
-    g_printerr ("Successfully created GTK GL Sink \n");
-    g_object_set (data.videosink, "sink", data.gtkglsink, NULL);
-    g_object_get (data.gtkglsink, "widget", &data.sink_widget, NULL);
-  }else {
-    g_printerr ("Could not create gtkglsink, falling back to gtksink.\n");
-    data.videosink = gst_element_factory_make ("gtksink", "gtksink");
-    g_object_get (data.videosink, "widget", &data.sink_widget, NULL);
-  }
+  #ifdef HWACC_ENABLED
+    if (data.gtkglsink != NULL && data.videosink != NULL) {
+      g_printerr ("Successfully created GTK GL Sink \n");
+      g_object_set (data.videosink, "sink", data.gtkglsink, NULL);
+      g_object_get (data.gtkglsink, "widget", &data.sink_widget, NULL);
+    }else{
+      return -1;
+    }
+  #else
+      g_printerr ("Could not create gtkglsink, falling back to gtksink.\n");
+      data.videosink = gst_element_factory_make ("gtksink", "gtksink");
+      g_object_get (data.videosink, "widget", &data.sink_widget, NULL);
+  #endif 
+
 
   /* Add gst-elements to BIN */
   gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.audio_queue, data.video_queue, data.aconvert, data.resample, data.asink, data.vconvert, data.videosink, NULL);

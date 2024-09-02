@@ -4,6 +4,14 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O2")
 
 project(open-pipe-media-player LANGUAGES C)
 
+
+option(HWACC "ENABLE HWACC" OFF)
+
+if(HWACC)
+    add_definitions(-DHWACC_ENABLED)
+endif()
+
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GST REQUIRED gstreamer-1.0)
 pkg_search_module(GLIB REQUIRED glib-2.0)
@@ -12,7 +20,6 @@ pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 add_executable(${PROJECT_NAME}-1-2 ./drafts/draft1-2.c)
 add_executable(${PROJECT_NAME}-3 ./drafts/draft3.c)
 add_executable(${PROJECT_NAME} draft4.c)
-
 
 add_definitions(${GTK3_CFLAGS_OTHER})
 target_compile_options(${PROJECT_NAME}-1-2 PRIVATE ${GST_CFLAGS})
