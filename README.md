@@ -1,7 +1,7 @@
 ## Open pipe media player [in development]
 
 A media player built for [bunch-linux](https://waelkarman.github.io/bunch-linux-manifests/). <br>
-The idea is to separate the audio from the video stream and introduce recording and stream forwarding features.<br><br>
+The idea is to get a deeper understanding about Hardware Acceleration and video streams.<br><br>
 
 <img src="doc/screen.gif">
 
